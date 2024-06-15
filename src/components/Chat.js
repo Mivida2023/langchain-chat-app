@@ -1,41 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Container} from 'react-bootstrap';
+import './Chat.css';
 
-function Chat({ username, chats }) {
-    const [currentChat, setCurrentChat] = useState(null);
+function Chat({ chat, username }) {
     const [message, setMessage] = useState('');
-    const [chatHistory, setChatHistory] = useState([]);
+    const [chatHistory, setChatHistory] = useState(chat.history);
 
     useEffect(() => {
-        console.log("Chats updated: ", chats);
-    }, [chats]);
-
-    const selectChat = async (chatName) => {
-        setCurrentChat(chatName);
-        try {
-            const response = await axios.get(`http://localhost:5000/chats/${username}`);
-            const selectedChat = response.data.chats.find(chat => chat.name === chatName);
-            setChatHistory(selectedChat.history);
-            console.log("Selected Chat History: ", selectedChat.history);
-        } catch (error) {
-            console.error('Failed to load chat history', error);
-        }
-    };
+        setChatHistory(chat.history);
+    }, [chat]);
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
-        console.log("handleSendMessage called with message: ", message);
         try {
-            const response = await axios.post('http://localhost:5000/chats/response', {
-                username,
-                chat_name: currentChat,
+            await axios.post(`http://localhost:5000/chats/message/${username}`, {
+                chat_name: chat.name,
                 message,
-            }, {
-                headers: {
-                    'Content-Type': 'application/json'
-                }
             });
-            console.log("Received response: ", response.data.response);
+            const response = await axios.post(`http://localhost:5000/chats/response/${username}`, {
+                chat_name: chat.name,
+                message,
+            });
             setChatHistory([...chatHistory, { type: 'Human', content: message }, { type: 'AI', content: response.data.response }]);
             setMessage('');
         } catch (error) {
@@ -44,36 +30,28 @@ function Chat({ username, chats }) {
     };
 
     return (
-        <div>
-            <h2>Chats</h2>
-            <div>
-                {chats.map((chat, index) => (
-                    <button key={index} onClick={() => selectChat(chat.name)}>
-                        {chat.name}
-                    </button>
+ 
+        <Container className="chat-container d-flex justify-content-center">
+            <h3>{chat.name}</h3>
+            <div className="chat-history">
+                {chatHistory.map((msg, index) => (
+                    <div key={index} className={`chat-message ${msg.type.toLowerCase()}`}>
+                        {msg.content}
+                    </div>
                 ))}
             </div>
-            {currentChat && (
-                <div>
-                    <h3>{currentChat}</h3>
-                    <div>
-                        {chatHistory.map((msg, index) => (
-                            <div key={index} className={msg.type}>
-                                {msg.content}
-                            </div>
-                        ))}
-                    </div>
-                    <form onSubmit={handleSendMessage}>
-                        <input
-                            type="text"
-                            value={message}
-                            onChange={(e) => setMessage(e.target.value)}
-                        />
-                        <button type="submit">Send</button>
-                    </form>
-                </div>
-            )}
-        </div>
+            <div className="chat-footer">
+                <form className="chat-input" onSubmit={handleSendMessage}>
+                    <input
+                        type="text"
+                        value={message}
+                        onChange={(e) => setMessage(e.target.value)}
+                        placeholder="Type a message"
+                    />
+                    <button type="submit">Send</button>
+                </form>
+            </div>
+        </Container>
     );
 }
 
